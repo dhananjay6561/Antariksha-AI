@@ -1,36 +1,69 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# AntarikshaAI — ISRO Intelligence Chatbot
 
-## Getting Started
+A purpose-built chatbot about India's space programme — ISRO's missions, launch vehicles, scientists, and the road ahead.
 
-First, run the development server:
+## Why ISRO?
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+ISRO's story is extraordinary: Mars on a budget smaller than the *Gravity* film, a south-pole Moon landing on the second attempt, a crewed mission in progress. I'm based in Bengaluru — ISRO's home city — and this felt like the most genuinely interesting topic I could build around.
+
+## Stack
+
+- **Next.js 14** (App Router, TypeScript)
+- **Tailwind CSS**
+- **Google Gemini 1.5 Flash** API (streaming)
+- Deployed on **Vercel**
+
+## Features
+
+- ⚡ Streaming responses with live token rendering
+- 🎨 Mission-control aesthetic (deep space dark, amber accents)
+- 💡 6 curated starter prompts
+- ✅ Full error / loading / empty state handling
+- 📱 Mobile responsive
+
+## Architecture
+
+```
+src/
+├── app/
+│   ├── layout.tsx              # Root layout, fonts, metadata
+│   ├── page.tsx                # Renders <ChatInterface />
+│   └── api/chat/route.ts       # POST → Gemini API, streams back
+├── components/
+│   ├── ChatInterface.tsx       # State orchestrator
+│   ├── MessageList.tsx         # Scrollable messages + auto-scroll
+│   ├── MessageBubble.tsx       # Single message (user | bot)
+│   ├── TypingIndicator.tsx     # Animated telemetry dots
+│   ├── ChatInput.tsx           # Textarea + send button
+│   ├── SuggestionChips.tsx     # 6 starter prompts (empty state)
+│   ├── Header.tsx              # Logo, tagline, accent bar
+│   └── ErrorBanner.tsx         # Inline error + retry
+├── hooks/
+│   └── useGeminiStream.ts      # All streaming + API call logic
+├── lib/
+│   ├── systemPrompt.ts         # Full AntarikshaAI system prompt
+│   ├── suggestions.ts          # 6 curated starter prompts
+│   └── types.ts                # Shared TypeScript types
+└── styles/
+    └── globals.css             # CSS variables, star-field bg, base styles
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Run Locally
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```bash
+npm install
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+# Add your Gemini API key to .env.local
+echo "GEMINI_API_KEY=your_key_here" > .env.local
 
-## Learn More
+npm run dev
+```
 
-To learn more about Next.js, take a look at the following resources:
+Get your API key at: [Google AI Studio](https://aistudio.google.com/app/apikey) (free, no credit card)
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Deploy to Vercel
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+1. Push to GitHub
+2. Import repo in [Vercel](https://vercel.com)
+3. Add `GEMINI_API_KEY` to Settings → Environment Variables
+4. Deploy 🚀
