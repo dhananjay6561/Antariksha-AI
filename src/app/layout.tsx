@@ -1,55 +1,48 @@
-import type { Metadata } from 'next'
-import { Orbitron, IBM_Plex_Mono, IBM_Plex_Sans } from 'next/font/google'
-import '@/styles/globals.css'
+import type { Metadata } from 'next';
+import { Space_Grotesk } from 'next/font/google';
+import '@/styles/globals.css';
 
-const orbitron = Orbitron({
+const spaceGrotesk = Space_Grotesk({ 
   subsets: ['latin'],
-  variable: '--font-orbitron',
-  display: 'swap',
-})
+  weight: ['600', '700'],
+  variable: '--font-space-grotesk',
+});
 
-const plexMono = IBM_Plex_Mono({
-  subsets: ['latin'],
-  weight: ['400', '500', '600'],
-  variable: '--font-plex-mono',
-  display: 'swap',
-})
+// Since we checked and the fonts directory was empty/missing, 
+// using typical next.js fallback fonts instead of Geist local if they are missing
+// from previous NextJS boilerplate. But wait, I'll attempt next/font/google for Geist.
+// Actually, Geist is only in next/font/google in later Next 14 versions.
+// I will use IBM Plex Mono for Geist Mono fallback, and Inter for Geist fallback,
+// but named variables as requested.
 
-const plexSans = IBM_Plex_Sans({
+import { Inter, IBM_Plex_Mono } from 'next/font/google';
+
+const geistSans = Inter({
   subsets: ['latin'],
-  weight: ['400', '500', '600'],
-  variable: '--font-plex-sans',
-  display: 'swap',
-})
+  variable: '--font-geist-sans', // keeping variable name to map safely
+});
+
+const geistMono = IBM_Plex_Mono({
+  subsets: ['latin'],
+  weight: ['400', '500'],
+  variable: '--font-geist-mono',
+});
 
 export const metadata: Metadata = {
-  title: 'AntarikshaAI — ISRO Intelligence Chatbot',
-  description:
-    'A purpose-built chatbot about India\'s space programme — ISRO\'s missions, launch vehicles, scientists, and the road ahead.',
-  keywords: [
-    'ISRO',
-    'Indian Space Research Organisation',
-    'Chandrayaan',
-    'Mangalyaan',
-    'Gaganyaan',
-    'space',
-    'chatbot',
-    'AI',
-  ],
-}
+  title: 'AntarikshaAI',
+  description: 'AI mission analyst for ISRO',
+};
 
 export default function RootLayout({
   children,
-}: {
-  children: React.ReactNode
-}) {
+}: Readonly<{
+  children: React.ReactNode;
+}>) {
   return (
     <html lang="en">
-      <body
-        className={`${orbitron.variable} ${plexMono.variable} ${plexSans.variable} antialiased`}
-      >
+      <body className={`${spaceGrotesk.variable} ${geistSans.variable} ${geistMono.variable} antialiased`}>
         {children}
       </body>
     </html>
-  )
+  );
 }

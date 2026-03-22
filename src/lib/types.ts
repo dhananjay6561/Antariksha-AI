@@ -1,15 +1,22 @@
-export type MessageRole = 'user' | 'assistant'
+export type Role = 'user' | 'model';
 
 export interface Message {
-  id: string
-  role: MessageRole
-  content: string
-  timestamp: Date
-  isStreaming?: boolean
+  id: string;
+  role: Role;
+  content: string;
+  timestamp: Date;
+  isClassified?: boolean;
 }
 
-export interface Suggestion {
-  category: string
-  label: string
-  prompt: string
+export interface SuggestionChip {
+  id: string;
+  category: string;
+  label: string;
+  prompt: string;
+}
+
+export interface ChatState {
+  messages: Message[];
+  isLoading: boolean;
+  error: string | null;
 }

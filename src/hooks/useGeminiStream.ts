@@ -1,134 +1,114 @@
-'use client'
-
-import { useState, useCallback } from 'react'
-import { nanoid } from 'nanoid'
-import { Message } from '@/lib/types'
+import { useState } from 'react';
+import { nanoid } from 'nanoid';
+import { Message } from '@/lib/types';
 
 export function useGeminiStream() {
-  const [messages, setMessages] = useState<Message[]>([])
-  const [isLoading, setIsLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const sendMessage = useCallback(async function sendMessage(text: string) {
+  const sendMessage = async (content: string) => {
+    if (!content.trim()) return;
+
+    setError(null);
+    setIsLoading(true);
+
     const userMessage: Message = {
       id: nanoid(),
       role: 'user',
-      content: text,
+      content,
       timestamp: new Date(),
-    }
+    };
 
-    const botMessageId = nanoid()
-    const botMessage: Message = {
+    setMessages((prev) => [...prev, userMessage]);
+
+    const botMessageId = nanoid();
+    const streamingBotMessage: Message = {
       id: botMessageId,
-      role: 'assistant',
+      role: 'model',
       content: '',
       timestamp: new Date(),
-      isStreaming: true,
-    }
+    };
 
-    // Append user message and an empty streaming bot message
-    setMessages((prev) => [...prev, userMessage, botMessage])
-    setIsLoading(true)
-    setError(null)
+    setMessages((prev) => [...prev, streamingBotMessage]);
 
     try {
-      // Build the messages payload — include all previous messages plus the new user message.
-      // Exclude the empty bot placeholder from the API payload.
-      const apiMessages = [...messages, userMessage].map((m) => ({
-        role: m.role,
-        content: m.content,
-      }))
-
       const response = await fetch('/api/chat', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ messages: apiMessages }),
-      })
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          messages: [...messages, userMessage],
+        }),
+      });
 
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}))
-        const errorMsg =
-          errorData.error || `Request failed with status ${response.status}`
-        setError(errorMsg)
-        // Remove the empty bot message on error
-        setMessages((prev) => prev.filter((m) => m.id !== botMessageId))
-        setIsLoading(false)
-        return
+        const errData = await response.json();
+        throw new Error(errData.error || 'Connection failed.');
       }
 
-      if (!response.body) {
-        setError('No response stream received.')
-        setMessages((prev) => prev.filter((m) => m.id !== botMessageId))
-        setIsLoading(false)
-        return
+      if (!response.body) throw new Error('No stream in response');
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let done = false;
+
+      // Stream reading loop
+      while (!done) {
+        const { value, done: readerDone } = await reader.read();
+        done = readerDone;
+
+        if (value) {
+          const chunkText = decoder.decode(value, { stream: true });
+          streamingBotMessage.content += chunkText;
+
+          // Check for classified response easter egg
+          if (streamingBotMessage.content.includes('[CLASSIFIED — FOUNDING BRIEF]')) {
+            streamingBotMessage.isClassified = true;
+          }
+
+          setMessages((prev) =>
+            prev.map((msg) =>
+              msg.id === botMessageId ? { ...streamingBotMessage } : msg
+            )
+          );
+        }
       }
-
-      // Read the response stream chunk by chunk and append to the bot message content
-      const reader = response.body.getReader()
-      const decoder = new TextDecoder()
-      let accumulatedContent = ''
-
-      while (true) {
-        const { done, value } = await reader.read()
-        if (done) break
-
-        const chunk = decoder.decode(value, { stream: true })
-        accumulatedContent += chunk
-
-        // Update the bot message content with each new chunk
-        const currentContent = accumulatedContent
-        setMessages((prev) =>
-          prev.map((m) =>
-            m.id === botMessageId
-              ? { ...m, content: currentContent }
-              : m
-          )
-        )
+    } catch (err: unknown) {
+      const error = err as Error;
+      setError(error.message || 'Comms link failed.');
+      // Remove the empty bot message if it failed early
+      if (streamingBotMessage.content === '') {
+        setMessages((prev) => prev.filter((msg) => msg.id !== botMessageId));
       }
-
-      // Stream complete — mark the bot message as no longer streaming
-      setMessages((prev) =>
-        prev.map((m) =>
-          m.id === botMessageId
-            ? { ...m, isStreaming: false }
-            : m
-        )
-      )
-    } catch (err) {
-      const errorMsg =
-        err instanceof Error ? err.message : 'Failed to send message.'
-      setError(errorMsg)
-      // Remove the failed bot message
-      setMessages((prev) => prev.filter((m) => m.id !== botMessageId))
     } finally {
-      setIsLoading(false)
+      setIsLoading(false);
     }
-  }, [messages])
+  };
 
-  const retryLast = useCallback(function retryLast() {
-    // Find the last user message to re-send
-    const lastUserMessage = [...messages]
-      .reverse()
-      .find((m) => m.role === 'user')
+  const retryLast = async () => {
+    const lastUserMessage = [...messages].reverse().find((msg) => msg.role === 'user');
+    if (lastUserMessage) {
+      // Remove all messages after the last user message
+      const indexOfLastUser = messages.findIndex((msg) => msg.id === lastUserMessage.id);
+      setMessages((prev) => prev.slice(0, indexOfLastUser));
+      await sendMessage(lastUserMessage.content);
+    }
+  };
 
-    if (!lastUserMessage) return
+  const clearConversation = () => {
+    setMessages([]);
+    setIsLoading(false);
+    setError(null);
+  };
 
-    // Remove the last bot message (the failed one) before retrying
-    setMessages((prev) => {
-      const lastBotIndex = [...prev]
-        .map((m, i) => ({ role: m.role, index: i }))
-        .reverse()
-        .find((entry) => entry.role === 'assistant')
-
-      if (lastBotIndex !== undefined) {
-        return prev.filter((_, i) => i !== lastBotIndex.index)
-      }
-      return prev
-    })
-
-    setError(null)
-    sendMessage(lastUserMessage.content)
-  }, [messages, sendMessage])
-
-  return { messages, isLoading, error, sendMessage, retryLast }
+  return {
+    messages,
+    isLoading,
+    error,
+    sendMessage,
+    retryLast,
+    clearConversation,
+  };
 }

@@ -1,48 +1,86 @@
-'use client'
+'use client';
 
-import { useGeminiStream } from '@/hooks/useGeminiStream'
-import { suggestions } from '@/lib/suggestions'
-import Header from './Header'
-import SuggestionChips from './SuggestionChips'
-import MessageList from './MessageList'
-import ChatInput from './ChatInput'
-import ErrorBanner from './ErrorBanner'
+import { useState } from 'react';
+import Header from './Header';
+import MessageList from './MessageList';
+import ChatInput from './ChatInput';
+import SuggestionChips from './SuggestionChips';
+import NewMissionModal from './NewMissionModal';
+import { useGeminiStream } from '@/hooks/useGeminiStream';
+import { useAutoScroll } from '@/hooks/useAutoScroll';
+import { useEasterEggs } from '@/hooks/useEasterEggs';
 
 export default function ChatInterface() {
-  const { messages, isLoading, error, sendMessage, retryLast } =
-    useGeminiStream()
+  const { messages, isLoading, error, sendMessage, retryLast, clearConversation } = useGeminiStream();
+  const { scrollRef } = useAutoScroll(messages.length, isLoading);
+  const { isRocketLaunching } = useEasterEggs();
 
-  const hasMessages = messages.length > 0
+  const [missionNumber, setMissionNumber] = useState(1);
+  const [showModal, setShowModal] = useState(false);
+
+  const handleSendMessage = (content: string) => {
+    sendMessage(content);
+  };
+
+  const handleNewMissionClick = () => {
+    setShowModal(true);
+  };
+
+  const handleLaunchNewMission = () => {
+    clearConversation();
+    setMissionNumber((prev) => prev + 1);
+    setShowModal(false);
+  };
 
   return (
-    <div className="flex flex-col h-screen w-full relative z-10 overflow-hidden">
-      <Header />
+    <div className="flex flex-col h-[100dvh] bg-[var(--color-bg)] text-[var(--color-text-primary)] overflow-hidden relative">
+      <Header 
+        missionNumber={missionNumber} 
+        isLoading={isLoading} 
+        onNewMission={handleNewMissionClick} 
+      />
 
-      {/* Add top padding to account for the floating header (header height + py-4 = ~80px) */}
-      <div className="flex-1 flex flex-col min-h-0 max-w-4xl w-full mx-auto pt-24 pb-32 px-4 sm:px-6 relative">
-        {/* Empty state: show suggestion chips when no messages exist */}
-        {!hasMessages ? (
-          <div className="flex-1 flex flex-col items-center justify-center fade-in">
-            <SuggestionChips
-              suggestions={suggestions}
-              onSelect={sendMessage}
+      <div className="flex-1 relative flex flex-col overflow-hidden w-full">
+        {messages.length === 0 ? (
+          <div className="flex-1 overflow-y-auto pt-4 pb-36">
+            <SuggestionChips 
+              isVisible={messages.length === 0} 
+              onSelect={handleSendMessage} 
             />
           </div>
         ) : (
-          <div className="flex-1 flex flex-col min-h-0 w-full fade-in">
-            <MessageList messages={messages} isLoading={isLoading} />
-          </div>
-        )}
-
-        {/* Error banner — shown hovering above the input when an error occurs */}
-        {error && (
-          <div className="absolute bottom-28 left-0 right-0 z-40 px-4 flex justify-center fade-in">
-            <ErrorBanner message={error} onRetry={retryLast} />
-          </div>
+          <MessageList 
+            messages={messages} 
+            isLoading={isLoading} 
+            error={error} 
+            scrollRef={scrollRef} 
+            onRetry={retryLast} 
+          />
         )}
       </div>
 
-      <ChatInput onSend={sendMessage} isLoading={isLoading} />
+      <ChatInput 
+        onSendMessage={handleSendMessage} 
+        isLoading={isLoading} 
+      />
+
+      {showModal && (
+        <NewMissionModal 
+          onLaunch={handleLaunchNewMission} 
+          onCancel={() => setShowModal(false)} 
+        />
+      )}
+
+      {isRocketLaunching && (
+        <>
+          <div className="fixed bottom-8 left-1/2 -ml-6 text-[2.5rem] animate-[rocketLaunch_2.5s_ease-in_forwards] z-50 pointer-events-none select-none">
+            <span role="img" aria-label="rocket">🚀</span>
+          </div>
+          <div className="fixed bottom-6 right-6 bg-[var(--color-surface-2)] border border-[var(--color-border)] rounded-xl p-3 font-geist-mono text-[12px] text-[var(--color-accent)] animate-[toastSlideIn_0.3s_ease-out_2.7s_forwards,toastFadeOut_0.3s_ease-out_5.7s_forwards] opacity-0 shadow-lg z-50 pointer-events-none">
+            T+00:00 — Launch successful.
+          </div>
+        </>
+      )}
     </div>
-  )
+  );
 }
